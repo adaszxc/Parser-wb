@@ -4,10 +4,8 @@ from browser_emulator import close_browser, launch_browser_context
 from config import MODE_OUTPUT_WITH_PRICES, OUT_NAMES_FILE, OUT_NAMES_PRICES_FILE, WB_TOP_N
 from parser import wb_parse_card_name_prices, wb_parse_first_ids, wb_parse_first_names
 from report import wb_save_names, wb_save_names_prices
-from scraper import (
-    wb_net_print_summary,
-    wb_scrape_card_detail,
-)
+from net_usage import wb_net_print_summary
+from scraper import wb_scrape_card_detail
 
 
 def main() -> None:
@@ -43,7 +41,11 @@ def main() -> None:
         print()  # пустая строка после NETWORK USAGE SUMMARY
 
         print("Закрой браузер вручную, либо нажми Enter в терминале, чтобы завершить скрипт.")
-        input()
+        try:
+            input()
+        except KeyboardInterrupt:
+            pass
 
     finally:
         close_browser(playwright, context)
+

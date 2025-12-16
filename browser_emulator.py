@@ -6,6 +6,7 @@ import random
 from urllib.parse import quote
 
 from playwright.sync_api import BrowserContext, Error, Page, Playwright, sync_playwright
+from net_usage import attach_wb_traffic_counter
 
 from config import (
     BROWSER_HEADLESS,
@@ -107,9 +108,11 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
     )
 
     page = context.new_page()
+    attach_wb_traffic_counter(page)
     products = _warmup_wb(page)
 
     return playwright, context, page, products
+
 
 
 
@@ -118,11 +121,12 @@ def close_browser(playwright: Playwright | None, context: BrowserContext | None)
     if context is not None:
         try:
             context.close()
-        except Error:
+        except Exception:
             pass
 
     if playwright is not None:
         try:
             playwright.stop()
-        except Error:
+        except Exception:
             pass
+
