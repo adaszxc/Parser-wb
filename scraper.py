@@ -14,10 +14,9 @@ from config import (
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
     WB_CARDS_DETAIL_BASE,
     WB_QUERY,
-    WB_SEARCH_API_PART,
-    WB_SEARCH_ENTRYPOINT_BASE,
+    WB_SEARCH_API_BASE,
 )
-from parser import wb_parse_card_name_prices
+
 
 
 @dataclass
@@ -91,19 +90,14 @@ def _wb_resp_size_bytes(resp: Response) -> int:
 # Возвращает массив products из search API
 def wb_scrape_search_products(page: Page) -> list[dict]:
     func = "wb_scrape_search_products"
-    search_entrypoint = WB_SEARCH_ENTRYPOINT_BASE + quote(WB_QUERY)
 
-    with page.expect_response(
-        lambda r: (WB_SEARCH_API_PART in r.url) and (r.status == 200),
+    resp = page.request.get(
+        WB_SEARCH_API_BASE + quote(WB_QUERY),
         timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
-    ) as resp_info:
-        page.goto(
-            search_entrypoint,
-            wait_until="domcontentloaded",
-            timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
-        )
+    )
+    if not resp.ok:
+        raise RuntimeError(f"search: http {resp.status}")
 
-    resp = resp_info.value
     _WB_NET.add(func, downloaded=_wb_resp_size_bytes(resp))
 
     search_json = resp.json()
@@ -112,6 +106,7 @@ def wb_scrape_search_products(page: Page) -> list[dict]:
         raise RuntimeError("search: нет массива products[] в JSON")
 
     return products
+
 
 
 # По одному id запрашивает detail API и возвращает JSON-ответ

@@ -7,7 +7,6 @@ from report import wb_save_names, wb_save_names_prices
 from scraper import (
     wb_net_print_summary,
     wb_scrape_card_detail,
-    wb_scrape_search_products,
 )
 
 
@@ -16,9 +15,8 @@ def main() -> None:
     context = None
 
     try:
-        playwright, context, page = launch_browser_context()
+        playwright, context, page, products = launch_browser_context()
 
-        products = wb_scrape_search_products(page)
 
         if MODE_OUTPUT_WITH_PRICES:
             ids = wb_parse_first_ids(products, WB_TOP_N)
@@ -26,7 +24,12 @@ def main() -> None:
             rows: list[dict] = []
             for nm_id in ids:
                 card_json = wb_scrape_card_detail(page, nm_id)
-                rows.append(wb_parse_card_name_prices(card_json, nm_id))
+                try:
+                    rows.append(wb_parse_card_name_prices(card_json, nm_id))
+                except RuntimeError as e:
+                    print(f"[skip] id={nm_id}: {e}")
+                    continue
+
 
             wb_save_names_prices(rows)
             print(f"Файл сохранён: {OUT_NAMES_PRICES_FILE}")
