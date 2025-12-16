@@ -249,7 +249,9 @@ def wb_save_names_prices(rows: list[dict]) -> None:
 
     lines: list[str] = []
     for r in rows:
-        lines.append(f'{r["name"]} | basic={r["basic"]} | wallet={r["wallet"]}')
+        lines.append(
+            f'{r["name"]} | без скидок={r["basic"]} | со скидкой={r["wallet"]}'
+        )
 
     out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
