@@ -1,11 +1,10 @@
-"""Модуль для сохранения результатов парсинга в файлы."""
+# Сохраняет данные в нужный формат
 
 from pathlib import Path
-
 from config import OUT_NAMES_PRICES_FILE
 
 
-# Сохраняет имена и цены товаров в текстовый файл рядом со скриптом
+# Сохраняет имена и цены товаров в текстовый файл (в папке срипта)
 def wb_save_names_prices(rows: list[dict]) -> None:
     out_path = Path(__file__).resolve().parent / OUT_NAMES_PRICES_FILE
 
