@@ -5,7 +5,10 @@ from config import (
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
     WB_CARDS_DETAIL_BASE,
 )
-from net_usage import add_scripted_response
+from net_usage import add_scripted_response, register_scripted_prefix
+
+# Регистрация скриптового запроса для исключения из браузерного трафика
+register_scripted_prefix("wb_scrape_card_detail", WB_CARDS_DETAIL_BASE)
 
 
 # Возвращает JSON карточки по nm_id (идентификатор конкретной карточки).
