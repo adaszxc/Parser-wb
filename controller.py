@@ -4,7 +4,7 @@ from browser_emulator import close_browser, launch_browser_context
 from config import OUT_NAMES_PRICES_FILE, WB_TOP_N
 from parser import wb_parse_card_name_prices, wb_parse_first_ids
 from report import wb_save_names_prices
-from net_usage import wb_net_print_summary
+from net_usage import print_wb_traffic
 from scraper import wb_scrape_card_detail
 import logger
 
@@ -32,11 +32,9 @@ def main() -> None:
 
         wb_save_names_prices(rows)
         print(f"Файл сохранён: {OUT_NAMES_PRICES_FILE}")
-
-        print()  # пустая строка перед NETWORK USAGE SUMMARY
-        wb_net_print_summary()
-        print()  # пустая строка после NETWORK USAGE SUMMARY
-
+        print()
+        print_wb_traffic()
+        print()
         print("Нажми Enter, чтобы завершить скрипт.")
         try:
             input()

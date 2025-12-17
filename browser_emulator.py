@@ -5,7 +5,7 @@ import time
 import random
 from urllib.parse import quote
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
-from net_usage import attach_wb_traffic_counter
+from net_usage import attach_wb_browser_counter
 import logger
 from config import (
     BROWSER_HEADLESS,
@@ -106,8 +106,9 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
     )
 
     page = context.new_page()
-    attach_wb_traffic_counter(page)
+    attach_wb_browser_counter(page)
     products = _warmup_wb(page)
+
 
     return playwright, context, page, products
 

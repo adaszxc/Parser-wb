@@ -1,216 +1,111 @@
-# Учёт и агрегирование сетевого трафика
+# =============================== WB TRAFFIC COUNTER ===============================
+# Считает объём данных, которые инфраструктура WB отдала клиенту.
+# Разделяет трафик на скриптовый (явные API-вызовы) и не скриптовый (браузерные).
 
 from __future__ import annotations
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 from playwright.sync_api import Page, Response
 
-#============================= REQUEST SIZE HELPERS ==============================
-# Вспомогательные функции определения объёма upload/download.
 
-# Оценивает объём upload по заголовку content-length у запроса, если доступен.
-def _req_upload_size_bytes(resp: Response) -> int:
+# =============================== DATA MODELS ======================================
+
+@dataclass
+class _Bucket:
+    bytes: int = 0
+
+
+@dataclass
+class WBTraffic:
+    scripted: dict[str, _Bucket] = field(default_factory=dict)
+    non_scripted_bytes: int = 0
+
+    def add_scripted(self, name: str, n: int) -> None:
+        if n <= 0:
+            return
+        b = self.scripted.setdefault(name, _Bucket())
+        b.bytes += n
+
+    def add_non_scripted(self, n: int) -> None:
+        if n <= 0:
+            return
+        self.non_scripted_bytes += n
+
+    def scripted_total(self) -> int:
+        return sum(b.bytes for b in self.scripted.values())
+
+    def total(self) -> int:
+        return self.non_scripted_bytes + self.scripted_total()
+
+
+WB_TRAFFIC = WBTraffic()
+_SCRIPTED_URLS: set[str] = set()
+
+
+# =============================== SIZE HELPERS =====================================
+
+# Размер ответа в байтах, как он был передан по сети (сжатое тело).
+def _encoded_response_size(resp: Response) -> int:
     try:
-        req = resp.request
-        h = req.headers.get("content-length")
+        h = resp.headers.get("content-length")
         if isinstance(h, str):
-            try:
-                return max(0, int(h))
-            except ValueError:
-                return 0
+            return max(0, int(h))
     except Exception:
-        return 0
+        pass
     return 0
 
 
-# Оценивает объём download по заголовку content-length, при необходимости с fallback на тело ответа.
-def _resp_download_size_bytes(resp: Response, *, allow_body_fallback: bool) -> int:
-    h = resp.headers.get("content-length")
-    if isinstance(h, str):
-        try:
-            return max(0, int(h))
-        except ValueError:
-            return 0
+# =============================== BROWSER HOOK =====================================
 
-    if not allow_body_fallback:
-        return 0
-
-    try:
-        return len(resp.body())
-    except Exception:
-        return 0
-
-
-#============================== DATA AGGREGATION ================================
-# Структуры для накопления сетевого трафика.
-
-@dataclass
-class _NetBucket:
-    uploaded: int = 0
-    downloaded: int = 0
-
-    @property
-    def total(self) -> int:
-        return self.uploaded + self.downloaded
-
-
-@dataclass
-class NetUsage:
-    buckets: dict[str, _NetBucket] = field(default_factory=dict)
-
-    # Добавляет трафик в именованную корзину, игнорируя нулевые значения.
-    def add(self, bucket: str, *, uploaded: int = 0, downloaded: int = 0) -> None:
-        if uploaded <= 0 and downloaded <= 0:
-            return
-
-        b = self.buckets.setdefault(bucket, _NetBucket())
-
-        if uploaded > 0:
-            b.uploaded += uploaded
-        if downloaded > 0:
-            b.downloaded += downloaded
-
-    # Возвращает общий трафик по всем корзинам.
-    def total(self) -> int:
-        return sum(b.total for b in self.buckets.values())
-
-    # Форматирует объём в килобайты/мегабайты для вывода в консоль.
-    def _fmt(self, n_bytes: int) -> str:
-        kb = 1024
-        mb = 1024 * 1024
-
-        if n_bytes >= mb:
-            return f"{n_bytes / mb:.1f} mb"
-        return f"{int(round(n_bytes / kb))} kb"
-
-    # Печатает сводку: общий трафик и корзины по убыванию объёма.
-    def print_summary(self) -> None:
-        print("NETWORK USAGE SUMMARY")
-        print(f"Total - {self._fmt(self.total())}")
-
-        items = sorted(
-            self.buckets.items(),
-            key=lambda kv: kv[1].total,
-            reverse=True,
-        )
-
-        for name, b in items:
-            if b.total <= 0:
-                continue
-            print(f"{name} - {self._fmt(b.total)}")
-
-
-#============================== GLOBAL COUNTER ==================================
-# Глобальный аккумулятор трафика Wildberries.
-
-WB_NET = NetUsage()
-
-
-# Печатает агрегированную сводку по глобальному счётчику.
-def wb_net_print_summary() -> None:
-    WB_NET.print_summary()
-
-
-#========================== PLAYWRIGHT INSTRUMENTATION ===========================
-# Подключение счётчика трафика к странице браузера.
-
-# Подключает счётчик трафика WB к Page через CDP (или через response fallback).
-def attach_wb_traffic_counter(page: Page) -> None:
-    try:
-        cdp = page.context.new_cdp_session(page)
-        cdp.send("Network.enable")
-
-        req_meta: dict[str, tuple[str, int]] = {}
-
-        # Сохраняет метаданные WB-запроса для последующего сопоставления с завершением загрузки.
-        def on_request_will_be_sent(params: dict) -> None:
-            request_id = params.get("requestId")
-            req = params.get("request") or {}
-            url = req.get("url")
-
-            if not isinstance(request_id, str) or not isinstance(url, str):
-                return
-
-            try:
-                u = urlparse(url)
-                host = (u.hostname or "").lower()
-                if not host.endswith("wildberries.ru"):
-                    return
-            except Exception:
-                return
-
-            headers = req.get("headers") or {}
-            up = 0
-
-            if isinstance(headers, dict):
-                h = headers.get("content-length")
-                if isinstance(h, str):
-                    try:
-                        up = max(0, int(h))
-                    except ValueError:
-                        up = 0
-
-            req_meta[request_id] = (url, up)
-
-        # Добавляет трафик по завершённому запросу, используя encodedDataLength как download.
-        def on_loading_finished(params: dict) -> None:
-            request_id = params.get("requestId")
-            if not isinstance(request_id, str):
-                return
-
-            meta = req_meta.pop(request_id, None)
-            if meta is None:
-                return
-
-            _, uploaded = meta
-            downloaded = params.get("encodedDataLength")
-
-            if not isinstance(downloaded, int):
-                return
-
-            WB_NET.add(
-                "wb_browser",
-                uploaded=uploaded,
-                downloaded=max(0, downloaded),
-            )
-
-        # Удаляет метаданные неуспешного запроса, чтобы не копить мусор.
-        def on_loading_failed(params: dict) -> None:
-            request_id = params.get("requestId")
-            if isinstance(request_id, str):
-                req_meta.pop(request_id, None)
-
-        cdp.on("Network.requestWillBeSent", on_request_will_be_sent)
-        cdp.on("Network.loadingFinished", on_loading_finished)
-        cdp.on("Network.loadingFailed", on_loading_failed)
-
-        return
-
-    except Exception:
-        pass
-
-    # Fallback-учёт по событиям response без CDP.
+# Учитывает все браузерные ответы WB как не скриптовые.
+def attach_wb_browser_counter(page: Page) -> None:
     def on_response(resp: Response) -> None:
         try:
             u = urlparse(resp.url)
             host = (u.hostname or "").lower()
-            if not host.endswith("wildberries.ru"):
+            if "wildberries" not in host and "wbstatic" not in host:
                 return
 
-            downloaded = _resp_download_size_bytes(resp, allow_body_fallback=False)
-            uploaded = _req_upload_size_bytes(resp)
-            WB_NET.add("wb_browser", uploaded=uploaded, downloaded=downloaded)
+            # Если вдруг скриптовый ответ попал в page.on("response"), не считаем его как не скриптовый.
+            if resp.url in _SCRIPTED_URLS:
+                return
+
+            n = _encoded_response_size(resp)
+            WB_TRAFFIC.add_non_scripted(n)
         except Exception:
             return
 
     page.on("response", on_response)
 
 
-#=============================== API RESPONSES ==================================
-# Учёт сетевого трафика при прямых API-запросах.
+# =============================== SCRIPTED API =====================================
 
-# Учитывает трафик конкретного API-ответа в указанную корзину.
-def add_api_response(resp: Response, bucket: str) -> None:
-    downloaded = _resp_download_size_bytes(resp, allow_body_fallback=True)
-    uploaded = _req_upload_size_bytes(resp)
-    WB_NET.add(bucket, uploaded=uploaded, downloaded=downloaded)
+# Учитывает ответ явного API-вызова как скриптовый.
+def add_scripted_response(resp: Response, name: str) -> None:
+    # Помечаем URL как скриптовый, чтобы не попал в не скриптовые при браузерном хуке.
+    try:
+        _SCRIPTED_URLS.add(resp.url)
+    except Exception:
+        pass
+
+    n = _encoded_response_size(resp)
+    if n == 0:
+        try:
+            n = len(resp.body())
+        except Exception:
+            n = 0
+
+    WB_TRAFFIC.add_scripted(name, n)
+
+
+
+# =============================== REPORT ===========================================
+
+# Печатает итоговый отчёт по трафику WB.
+def print_wb_traffic() -> None:
+    print("Трафик что WB отдал:")
+    print(f"Всего - {WB_TRAFFIC.total() // 1024} КБ")
+    print(f"Не скриптовые - {WB_TRAFFIC.non_scripted_bytes // 1024} КБ")
+    print("Скриптовые запросы:")
+    for name, b in WB_TRAFFIC.scripted.items():
+        print(f"- {name} - {b.bytes // 1024} КБ")
