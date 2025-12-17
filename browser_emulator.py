@@ -25,9 +25,6 @@ from config import (
 )
 
 
-
-
-
 #================================ PROFILE DIRECTORY ==============================
 # Проверка и подготовка директории persistent-профиля браузера.
 
@@ -89,8 +86,6 @@ def _warmup_wb(page: Page) -> list[dict]:
     ) from last_err
 
 
-
-
 #=============================== BROWSER LIFECYCLE ===============================
 # Запуск и корректное завершение persistent-контекста Chromium.
 
@@ -112,10 +107,6 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
     products = _warmup_wb(page)
 
     return playwright, context, page, products
-
-
-
-
 
 def close_browser(playwright: Playwright | None, context: BrowserContext | None) -> None:
     if context is not None:
