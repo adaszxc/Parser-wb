@@ -1,15 +1,12 @@
-# Запуск Chromium с persistent-профилем, прогрев профиля и управление жизненным циклом браузера.
+# Запуск и управление Chromium через Playwright, прогрев сессии и сохранение профиля (cookies/storage).
 
 import os
 import time
 import random
 from urllib.parse import quote
-
-from playwright.sync_api import BrowserContext, Error, Page, Playwright, sync_playwright
+from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 from net_usage import attach_wb_traffic_counter
 import logger
-
-
 from config import (
     BROWSER_HEADLESS,
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
@@ -27,9 +24,7 @@ from config import (
 )
 
 
-#================================ PROFILE DIRECTORY ==============================
-# Проверка и подготовка директории persistent-профиля браузера.
-
+# Проверка и создание каталога браузерного профиля (папки с cookies/storage).
 def _ensure_profile_dir(path: str) -> None:
     if os.path.exists(path):
         if not os.path.isdir(path):
@@ -39,9 +34,7 @@ def _ensure_profile_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-#===================================== WARMUP ===================================
-# Прогрев профиля WB для установки cookies и начального состояния.
-
+# Прогревает браузерную сессию.
 def _warmup_wb(page: Page) -> list[dict]:
     if not WB_WARMUP_ENABLED:
         return []
@@ -98,10 +91,7 @@ def _warmup_wb(page: Page) -> list[dict]:
     ) from last_err
 
 
-
-#=============================== BROWSER LIFECYCLE ===============================
-# Запуск и корректное завершение persistent-контекста Chromium.
-
+# Запускает Chromium и вызывает прогрев.
 def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dict]]:
     _ensure_profile_dir(BROWSER_PROFILE_DIR)
 
@@ -121,6 +111,8 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
 
     return playwright, context, page, products
 
+
+# Закрывает Chromium.
 def close_browser(playwright: Playwright | None, context: BrowserContext | None) -> None:
     if context is not None:
         try:
