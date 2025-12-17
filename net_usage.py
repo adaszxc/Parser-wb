@@ -1,6 +1,4 @@
-# =============================== WB TRAFFIC COUNTER ===============================
-# Считает объём данных, которые инфраструктура WB отдала клиенту.
-# Разделяет трафик на скриптовый (явные API-вызовы) и не скриптовый (браузерные).
+# Считает объём данных, которые WB отдал клиенту (погрешность ~ 5 – 20%).
 
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -9,7 +7,7 @@ from playwright.sync_api import Page, Response
 
 
 # =============================== DATA MODELS ======================================
-
+# Хранит и накапливает статистику трафика WB за время работы программы.
 @dataclass
 class _Bucket:
     bytes: int = 0
@@ -40,11 +38,10 @@ class WBTraffic:
 
 WB_TRAFFIC = WBTraffic()
 _SCRIPTED_PREFIXES: dict[str, list[str]] = {}
+# ==================================================================================
 
 
-# =============================== SIZE HELPERS =====================================
-
-# Размер ответа в байтах, как он был передан по сети (сжатое тело).
+# Считает байты, которые WB отдал клиенту.
 def _resp_size_bytes(resp: Response, *, allow_body_fallback: bool) -> int:
     try:
         h = resp.headers.get("content-length")
@@ -62,9 +59,7 @@ def _resp_size_bytes(resp: Response, *, allow_body_fallback: bool) -> int:
         return 0
 
 
-# =============================== BROWSER HOOK =====================================
-
-# Учитывает все браузерные ответы WB как не скриптовые.
+# Учитывает браузерный трафик WB, исключая скриптовые запросы
 def attach_wb_browser_counter(page: Page) -> None:
     def on_response(resp: Response) -> None:
         try:
@@ -73,13 +68,11 @@ def attach_wb_browser_counter(page: Page) -> None:
             if "wildberries" not in host and "wbstatic" not in host:
                 return
 
-            # Исключаем scripted по заранее зарегистрированным префиксам.
             for prefixes in _SCRIPTED_PREFIXES.values():
                 for p in prefixes:
                     if resp.url.startswith(p):
                         return
 
-            # Fallback на body разрешаем только для JSON (иначе медиа убьёт память).
             ct = resp.headers.get("content-type", "")
             allow_body = isinstance(ct, str) and ("application/json" in ct)
 
@@ -93,8 +86,7 @@ def attach_wb_browser_counter(page: Page) -> None:
 
 
 # =============================== SCRIPTED API =====================================
-# Регистрация и учёт явных API-вызовов.
-
+# Регистрация и учёт трафика скриптовых запросов
 def register_scripted_prefix(name: str, url_prefix: str) -> None:
     if not isinstance(url_prefix, str) or not url_prefix:
         return
@@ -106,11 +98,8 @@ def register_scripted_prefix(name: str, url_prefix: str) -> None:
 def add_scripted_response(resp: Response, name: str) -> None:
     n = _resp_size_bytes(resp, allow_body_fallback=True)
     WB_TRAFFIC.add_scripted(name, n)
+#==================================================================================
 
-
-
-
-# =============================== REPORT ===========================================
 
 # Печатает итоговый отчёт по трафику WB.
 def print_wb_traffic() -> None:

@@ -1,4 +1,5 @@
 # Извлекает данные из JSON и проверяет их корректность
+
 from pathlib import Path
 from config import WB_PRICE_SELECT_MODE
 
