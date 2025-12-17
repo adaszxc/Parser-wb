@@ -6,6 +6,7 @@ from parser import wb_parse_card_name_prices, wb_parse_first_ids, wb_parse_first
 from report import wb_save_names, wb_save_names_prices
 from net_usage import wb_net_print_summary
 from scraper import wb_scrape_card_detail
+import logger
 
 
 def main() -> None:
@@ -25,8 +26,9 @@ def main() -> None:
                 try:
                     rows.append(wb_parse_card_name_prices(card_json, nm_id))
                 except RuntimeError as e:
-                    print(f"[skip] id={nm_id}: {e}")
-                    continue
+                    logger.record_error("controller:main", f"card parse failed id={nm_id}", e, fatal=True)
+                    raise
+
 
 
             wb_save_names_prices(rows)
@@ -40,7 +42,7 @@ def main() -> None:
         wb_net_print_summary()
         print()  # пустая строка после NETWORK USAGE SUMMARY
 
-        print("Закрой браузер вручную, либо нажми Enter в терминале, чтобы завершить скрипт.")
+        print("Нажми Enter, чтобы завершить скрипт.")
         try:
             input()
         except KeyboardInterrupt:
@@ -48,4 +50,5 @@ def main() -> None:
 
     finally:
         close_browser(playwright, context)
+        logger.print_end_summary()
 

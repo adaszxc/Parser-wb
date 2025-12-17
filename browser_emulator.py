@@ -7,6 +7,8 @@ from urllib.parse import quote
 
 from playwright.sync_api import BrowserContext, Error, Page, Playwright, sync_playwright
 from net_usage import attach_wb_traffic_counter
+import logger
+
 
 from config import (
     BROWSER_HEADLESS,
@@ -78,12 +80,23 @@ def _warmup_wb(page: Page) -> list[dict]:
 
         except Exception as e:
             last_err = e
-            print(f"[warmup] failed, retry {attempt}/{WB_WARMUP_MAX_ATTEMPTS}")
+            logger.record_error(
+                "browser_emulator:_warmup_wb",
+                f"warmup failed, retry {attempt}/{WB_WARMUP_MAX_ATTEMPTS}",
+                e,
+            )
             time.sleep(1.2)
 
+    logger.record_error(
+        "browser_emulator:_warmup_wb",
+        f"warmup failed after {WB_WARMUP_MAX_ATTEMPTS} attempts",
+        last_err,
+        fatal=True,
+    )
     raise RuntimeError(
         f"warmup: не удалось прогреть профиль за {WB_WARMUP_MAX_ATTEMPTS} попыток: {last_err}"
     ) from last_err
+
 
 
 #=============================== BROWSER LIFECYCLE ===============================
@@ -112,12 +125,12 @@ def close_browser(playwright: Playwright | None, context: BrowserContext | None)
     if context is not None:
         try:
             context.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.record_error("browser_emulator:close_browser", "failed to close context", e)
 
     if playwright is not None:
         try:
             playwright.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.record_error("browser_emulator:close_browser", "failed to stop playwright", e)
 
