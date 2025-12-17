@@ -19,7 +19,7 @@ def wb_parse_first_ids(products: list[dict], top_n: int) -> list[int]:
     return ids
 
 
-# Возвращает (name, basic_u, wallet_u) из карточки, выбирая цены по правилам WB_PRICE_SELECT_MODE
+# Извлекает имя и цены из JSON карточки (падает при отклонении)
 def wb_parse_card_name_prices(cards_json: dict, nm_id: int) -> dict:
     data = cards_json.get("data")
     if isinstance(data, dict) and isinstance(data.get("products"), list):
