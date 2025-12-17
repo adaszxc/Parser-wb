@@ -125,4 +125,3 @@ def close_browser(playwright: Playwright | None, context: BrowserContext | None)
             playwright.stop()
         except Exception as e:
             logger.record_error("browser_emulator:close_browser", "failed to stop playwright", e)
-

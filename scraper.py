@@ -1,10 +1,6 @@
-# Забирает данные с сайта, диагностирует трафик
-
-#============================= СЕТЕВАЯ ДИАГНОСТИКА =============================
-# Суммирование трафика (upload+download) по имени функции и общий итог.
+# Достает данные карточек с WB через API
 
 from playwright.sync_api import Page
-
 from config import (
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
     WB_CARDS_DETAIL_BASE,
@@ -12,9 +8,7 @@ from config import (
 from net_usage import add_api_response
 
 
-
-
-# По одному id запрашивает detail API и возвращает JSON-ответ
+# Возвращает JSON карточки по nm_id (идентификатор конкретной карточки).
 def wb_scrape_card_detail(page: Page, nm_id: int) -> dict:
     func = "wb_scrape_card_detail"
     resp = page.request.get(
@@ -26,4 +20,3 @@ def wb_scrape_card_detail(page: Page, nm_id: int) -> dict:
 
     add_api_response(resp, func)
     return resp.json()
-
