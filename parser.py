@@ -1,27 +1,9 @@
-"""Модуль для извлечения и нормализации данных из JSON Wildberries."""
-
+# Извлекает данные из JSON и проверяет их корректность
 from pathlib import Path
-
 from config import WB_PRICE_SELECT_MODE
 
 
-# Извлекает имена товаров из products[0..top_n-1] без фильтрации
-def wb_parse_first_names(products: list[dict], top_n: int) -> list[str]:
-    if len(products) < top_n:
-        raise RuntimeError(f"search: products меньше чем {top_n}: {len(products)}")
-
-    names: list[str] = []
-    for i in range(top_n):
-        item = products[i]
-        name = item.get("name") if isinstance(item, dict) else None
-        if not isinstance(name, str):
-            raise RuntimeError(f"search: products[{i}].name не строка: {name!r}")
-        names.append(name)
-
-    return names
-
-
-# Извлекает id товаров из products[0..top_n-1] без фильтрации
+# Извлекает id товаров из products (падает при отклонении)
 def wb_parse_first_ids(products: list[dict], top_n: int) -> list[int]:
     if len(products) < top_n:
         raise RuntimeError(f"search: products меньше чем {top_n}: {len(products)}")
