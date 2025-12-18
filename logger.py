@@ -1,28 +1,5 @@
 # Выводит зарегистрированные ошибки в терминал
 
-
-
-
-
-
-
-
-
-
-# тут
-
-
-
-
-
-
-
-
-
-
-
-
-
 from __future__ import annotations
 import sys
 from dataclasses import dataclass
@@ -55,7 +32,7 @@ def _format_exc(exc: BaseException | None) -> tuple[str | None, str | None]:
     return type(exc).__name__, str(exc)
 
 
-# Выводит строку в stderr.
+# Выводит строку в stderr (сейчас в терминал)
 def _emit(line: str) -> None:
     print(line, file=sys.stderr)
 
