@@ -1,13 +1,8 @@
 # Взаимодейсвие модулей между собой.
 
 from browser_emulator import close_browser, launch_browser_context
-from config import (
-    CONTROLLER_EXIT_PROMPT,
-    CONTROLLER_FILE_SAVED_TEMPLATE,
-    CONTROLLER_WAIT_FOR_EXIT,
-    OUT_NAMES_PRICES_FILE,
-    WB_TOP_N,
-)
+from messages import CONTROLLER_EXIT_PROMPT, CONTROLLER_FILE_SAVED_TEMPLATE
+from settings import CONTROLLER_WAIT_FOR_EXIT, OUT_NAMES_PRICES_FILE, WB_TOP_N
 from parser import wb_parse_card_name_prices, wb_parse_first_ids
 from report import wb_save_names_prices
 from net_usage import print_wb_traffic

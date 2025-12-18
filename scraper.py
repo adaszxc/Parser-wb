@@ -1,7 +1,7 @@
 # Достает данные карточек с WB через API
 
 from playwright.sync_api import Page
-from config import (
+from settings import (
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
     WB_CARDS_DETAIL_BASE,
 )

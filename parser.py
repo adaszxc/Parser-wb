@@ -1,8 +1,5 @@
 # Извлекает данные из JSON и проверяет их корректность
 
-from config import WB_PRICE_SELECT_MODE
-
-
 # Извлекает id товаров из products (падает при отклонении)
 def wb_parse_first_ids(products: list[dict], top_n: int) -> list[int]:
     if len(products) < top_n:
@@ -58,16 +55,10 @@ def wb_parse_card_name_prices(cards_json: dict, nm_id: int) -> dict:
         w = price.get("product")
 
         if isinstance(b, int):
-            if WB_PRICE_SELECT_MODE == "min":
-                basic_u = b if basic_u is None else min(basic_u, b)
-            else:
-                basic_u = b if basic_u is None else basic_u
+             basic_u = b if basic_u is None else min(basic_u, b)
 
         if isinstance(w, int):
-            if WB_PRICE_SELECT_MODE == "min":
-                wallet_u = w if wallet_u is None else min(wallet_u, w)
-            else:
-                wallet_u = w if wallet_u is None else wallet_u
+            wallet_u = w if wallet_u is None else min(wallet_u, w)
 
     if basic_u is None or wallet_u is None:
         raise RuntimeError(f"cards: нет price.basic/product в sizes[] для id={nm_id}")

@@ -7,15 +7,12 @@ from urllib.parse import quote
 from playwright.sync_api import BrowserContext, Page, Playwright, sync_playwright
 from net_usage import attach_wb_browser_counter
 import logger
-from config import (
+from settings import (
     BROWSER_HEADLESS,
     BROWSER_PAGE_LOAD_TIMEOUT_MS,
     BROWSER_PROFILE_DIR,
     BROWSER_START_URL,
-    BROWSER_USER_AGENT,
     BROWSER_VIEWPORT,
-    BROWSER_LAUNCH_ARGS,
-    BROWSER_LOCALE,
     WB_QUERY,
     WB_SEARCH_API_URL_SUBSTRING,
     WB_SEARCH_ENTRYPOINT_BASE,
@@ -24,6 +21,13 @@ from config import (
     WB_WARMUP_ENABLED,
     WB_WARMUP_MAX_ATTEMPTS,
     WB_WARMUP_RETRY_DELAY_S,
+)
+_CHROMIUM_LAUNCH_ARGS = "--disable-blink-features=AutomationControlled", # Отключает флаг автоматизации Chromium (navigator.webdriver).
+_CHROMIUM_LOCALE = "ru-RU"   # Локаль браузера (чтобы не конфликтовала с IP)
+_CHROMIUM_USER_AGENT = (  #Как WB видит Chromium (видит Google Chrome).
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
 )
 
 
@@ -111,11 +115,12 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
     context = playwright.chromium.launch_persistent_context(
         user_data_dir=BROWSER_PROFILE_DIR,
         headless=BROWSER_HEADLESS,
-        args=BROWSER_LAUNCH_ARGS,
-        user_agent=BROWSER_USER_AGENT,
-        locale=BROWSER_LOCALE,
+        args=_CHROMIUM_LAUNCH_ARGS,
+        user_agent=_CHROMIUM_USER_AGENT,
+        locale=_CHROMIUM_LOCALE,
         viewport=BROWSER_VIEWPORT,
-    )
+)
+
 
     page = context.new_page()
     attach_wb_browser_counter(page)

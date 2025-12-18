@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 from playwright.sync_api import Page, Response
-from config import (
+from messages import (
     NET_USAGE_HEADER,
     NET_USAGE_NON_SCRIPTED_TEMPLATE,
     NET_USAGE_SCRIPTED_HEADER,

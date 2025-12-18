@@ -1,6 +1,7 @@
 # Сохраняет данные в нужный формат
 
-from config import OUT_NAMES_PRICES_FILE, REPORT_LINE_TEMPLATE, REPORT_OUTPUT_DIR
+from messages import REPORT_LINE_TEMPLATE
+from settings import OUT_NAMES_PRICES_FILE, REPORT_OUTPUT_DIR
 
 
 # Сохраняет имена и цены товаров в текстовый файл (в папке срипта)

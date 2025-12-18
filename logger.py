@@ -1,10 +1,10 @@
-# Выводит зарегистрированные ошибки в терминал
+# Выводит зарегистрированные ошибки в терминал.
 
 from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from config import (
+from messages import (
     LOGGER_IMMEDIATE_ERROR_TEMPLATE,
     LOGGER_IMMEDIATE_ERROR_WITH_EXC_TEMPLATE,
     LOGGER_NO_ERRORS,
@@ -13,8 +13,8 @@ from config import (
     LOGGER_SUMMARY_ROW_WITH_EXC_TEMPLATE,
     LOGGER_FATAL_PREFIX,
     LOGGER_ERROR_PREFIX,
-    LOG_MODE,
 )
+from settings import LOG_MODE
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def _format_exc(exc: BaseException | None) -> tuple[str | None, str | None]:
     return type(exc).__name__, str(exc)
 
 
-# Выводит строку в stderr (сейчас в терминал)
+# Выводит строку в stderr (сейчас в терминал).
 def _emit(line: str) -> None:
     print(line, file=sys.stderr)
 
