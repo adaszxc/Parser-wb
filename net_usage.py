@@ -4,6 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 from playwright.sync_api import Page, Response
+from config import (
+    NET_USAGE_HEADER,
+    NET_USAGE_NON_SCRIPTED_TEMPLATE,
+    NET_USAGE_SCRIPTED_HEADER,
+    NET_USAGE_SCRIPTED_ROW_TEMPLATE,
+    NET_USAGE_TOTAL_TEMPLATE,
+)
 
 
 # =============================== DATA MODELS ======================================
@@ -103,10 +110,10 @@ def add_scripted_response(resp: Response, name: str) -> None:
 
 # Печатает итоговый отчёт по трафику WB.
 def print_wb_traffic() -> None:
-    print("Трафик что WB отдал:")
-    print(f"Всего - {WB_TRAFFIC.total() // 1024} КБ")
-    print(f"Не скриптовые - {WB_TRAFFIC.non_scripted_bytes // 1024} КБ")
+    print(NET_USAGE_HEADER)
+    print(NET_USAGE_TOTAL_TEMPLATE.format(kb=WB_TRAFFIC.total() // 1024))
+    print(NET_USAGE_NON_SCRIPTED_TEMPLATE.format(kb=WB_TRAFFIC.non_scripted_bytes // 1024))
     if WB_TRAFFIC.scripted:
-        print("Скриптовые запросы:")
+        print(NET_USAGE_SCRIPTED_HEADER)
         for name, b in WB_TRAFFIC.scripted.items():
-            print(f"- {name} - {b.bytes // 1024} КБ")
+            print(NET_USAGE_SCRIPTED_ROW_TEMPLATE.format(name=name, kb=b.bytes // 1024))

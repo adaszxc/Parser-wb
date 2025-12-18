@@ -1,6 +1,5 @@
 # Извлекает данные из JSON и проверяет их корректность
 
-from pathlib import Path
 from config import WB_PRICE_SELECT_MODE
 
 
@@ -28,9 +27,10 @@ def wb_parse_card_name_prices(cards_json: dict, nm_id: int) -> dict:
     elif isinstance(cards_json.get("products"), list):
         cards_products = cards_json["products"]
     else:
-        out_debug = Path(__file__).resolve().parent / "wb_cards_raw.json"
-        out_debug.write_text(str(cards_json), encoding="utf-8")
-        raise RuntimeError(f"cards: не найден products[] для id={nm_id}; сохранено wb_cards_raw.json")
+        raise RuntimeError(
+            f"cards: не найден products[] для id={nm_id}"
+        )
+
 
     p_item = cards_products[0] if cards_products and isinstance(cards_products[0], dict) else None
     if not isinstance(p_item, dict):

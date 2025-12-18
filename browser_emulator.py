@@ -14,13 +14,16 @@ from config import (
     BROWSER_START_URL,
     BROWSER_USER_AGENT,
     BROWSER_VIEWPORT,
+    BROWSER_LAUNCH_ARGS,
+    BROWSER_LOCALE,
     WB_QUERY,
-    WB_SEARCH_API_PART,
+    WB_SEARCH_API_URL_SUBSTRING,
     WB_SEARCH_ENTRYPOINT_BASE,
     WB_WARMUP_DELAY_MAX_MS,
     WB_WARMUP_DELAY_MIN_MS,
     WB_WARMUP_ENABLED,
     WB_WARMUP_MAX_ATTEMPTS,
+    WB_WARMUP_RETRY_DELAY_S,
 )
 
 
@@ -36,40 +39,49 @@ def _ensure_profile_dir(path: str) -> None:
 
 # Прогревает браузерную сессию.
 def _warmup_wb(page: Page) -> list[dict]:
+    def _fetch_products(with_delay: bool) -> list[dict]:
+        page.goto(
+            BROWSER_START_URL,
+            wait_until="domcontentloaded",
+            timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
+        )
+
+        if with_delay:
+            delay_ms = random.randint(WB_WARMUP_DELAY_MIN_MS, WB_WARMUP_DELAY_MAX_MS)
+            page.wait_for_timeout(delay_ms)
+
+        search_entrypoint = WB_SEARCH_ENTRYPOINT_BASE + quote(WB_QUERY)
+        with page.expect_response(
+            lambda r: (WB_SEARCH_API_URL_SUBSTRING in r.url) and (r.status == 200),
+            timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
+        ) as resp_info:
+            page.goto(
+                search_entrypoint,
+                wait_until="domcontentloaded",
+                timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
+            )
+
+        resp = resp_info.value
+        search_json = resp.json()
+        products = search_json.get("products")
+        if not isinstance(products, list):
+            raise RuntimeError("warmup: search без products[]")
+
+        return products
+
     if not WB_WARMUP_ENABLED:
-        return []
+        try:
+            return _fetch_products(with_delay=False)
+        except Exception as e:
+            raise RuntimeError(
+                "warmup отключен: первичный search не выполнен"
+            ) from e
 
     last_err: Exception | None = None
 
     for attempt in range(1, WB_WARMUP_MAX_ATTEMPTS + 1):
         try:
-            page.goto(
-                BROWSER_START_URL,
-                wait_until="domcontentloaded",
-                timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
-            )
-
-            delay_ms = random.randint(WB_WARMUP_DELAY_MIN_MS, WB_WARMUP_DELAY_MAX_MS)
-            page.wait_for_timeout(delay_ms)
-
-            search_entrypoint = WB_SEARCH_ENTRYPOINT_BASE + quote(WB_QUERY)
-            with page.expect_response(
-                lambda r: (WB_SEARCH_API_PART in r.url) and (r.status == 200),
-                timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
-            ) as resp_info:
-                page.goto(
-                    search_entrypoint,
-                    wait_until="domcontentloaded",
-                    timeout=BROWSER_PAGE_LOAD_TIMEOUT_MS,
-                )
-
-            resp = resp_info.value
-            search_json = resp.json()
-            products = search_json.get("products")
-            if not isinstance(products, list):
-                raise RuntimeError("warmup: search без products[]")
-
-            return products
+            return _fetch_products(with_delay=True)
 
         except Exception as e:
             last_err = e
@@ -78,7 +90,7 @@ def _warmup_wb(page: Page) -> list[dict]:
                 f"warmup failed, retry {attempt}/{WB_WARMUP_MAX_ATTEMPTS}",
                 e,
             )
-            time.sleep(1.2)
+            time.sleep(WB_WARMUP_RETRY_DELAY_S)
 
     logger.record_error(
         "browser_emulator:_warmup_wb",
@@ -99,9 +111,9 @@ def launch_browser_context() -> tuple[Playwright, BrowserContext, Page, list[dic
     context = playwright.chromium.launch_persistent_context(
         user_data_dir=BROWSER_PROFILE_DIR,
         headless=BROWSER_HEADLESS,
-        args=["--disable-blink-features=AutomationControlled", "--start-maximized"],
+        args=BROWSER_LAUNCH_ARGS,
         user_agent=BROWSER_USER_AGENT,
-        locale="ru-RU",
+        locale=BROWSER_LOCALE,
         viewport=BROWSER_VIEWPORT,
     )
 

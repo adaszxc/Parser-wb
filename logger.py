@@ -4,7 +4,17 @@ from __future__ import annotations
 import sys
 from dataclasses import dataclass
 from datetime import datetime
-from config import LOG_MODE
+from config import (
+    LOGGER_IMMEDIATE_ERROR_TEMPLATE,
+    LOGGER_IMMEDIATE_ERROR_WITH_EXC_TEMPLATE,
+    LOGGER_NO_ERRORS,
+    LOGGER_NON_FATAL_HEADER,
+    LOGGER_SUMMARY_ROW_TEMPLATE,
+    LOGGER_SUMMARY_ROW_WITH_EXC_TEMPLATE,
+    LOGGER_FATAL_PREFIX,
+    LOGGER_ERROR_PREFIX,
+    LOG_MODE,
+)
 
 
 @dataclass(frozen=True)
@@ -53,22 +63,50 @@ def record_error(where: str, message: str, exc: BaseException | None = None, fat
 
     if LOG_MODE == 0:
         if exc_type is None:
-            _emit(f"[{where}] {message}")
+            _emit(
+                LOGGER_IMMEDIATE_ERROR_TEMPLATE.format(
+                    where=where,
+                    message=message,
+                )
+            )
         else:
-            _emit(f"[{where}] {message}: {exc_type}: {exc_text}")
+            _emit(
+                LOGGER_IMMEDIATE_ERROR_WITH_EXC_TEMPLATE.format(
+                    where=where,
+                    message=message,
+                    exc_type=exc_type,
+                    exc_text=exc_text,
+                )
+            )
 
 
 # Печатает итоговый отчёт по завершении программы.
 def print_end_summary() -> None:
     if not _errors:
-        _emit("Ошибок нет")
+        _emit(LOGGER_NO_ERRORS)
         return
 
     if LOG_MODE == 1:
-        _emit("Некритичные ошибки:")
+        _emit(LOGGER_NON_FATAL_HEADER)
         for err in _errors:
-            prefix = "FATAL" if err.fatal else "ERROR"
+            prefix = LOGGER_FATAL_PREFIX if err.fatal else LOGGER_ERROR_PREFIX
             if err.exc_type is None:
-                _emit(f"{err.ts} {prefix} [{err.where}] {err.message}")
+                _emit(
+                    LOGGER_SUMMARY_ROW_TEMPLATE.format(
+                        ts=err.ts,
+                        prefix=prefix,
+                        where=err.where,
+                        message=err.message,
+                    )
+                )
             else:
-                _emit(f"{err.ts} {prefix} [{err.where}] {err.message}: {err.exc_type}: {err.exc_text}")
+                _emit(
+                    LOGGER_SUMMARY_ROW_WITH_EXC_TEMPLATE.format(
+                        ts=err.ts,
+                        prefix=prefix,
+                        where=err.where,
+                        message=err.message,
+                        exc_type=err.exc_type,
+                        exc_text=err.exc_text,
+                    )
+                )
